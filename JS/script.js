@@ -14,7 +14,19 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 //回すボタンクリック
-AddListBtn.addEventListener("click", () => {});
+RouletteBtn.addEventListener("click", () => {
+  console.log("回すボタンが押されました");
+  var todoTxtAry = []; //テキストボックス値格納用の配列
+  var todoBoxes = document.getElementsByClassName("todoBox"); //テキストボックスたちを取得
+  for (i = 0; i < todoBoxes.length; i++) {
+    let todoStr = todoBoxes[i].value.trim();
+    if (todoStr !== "" && todoStr !== null) {
+      todoTxtAry.push(todoStr); //テキストボックス内が空でない場合、値を配列に格納する
+    }
+  }
+  if (todoTxtAry.length < 1) return; //値が何も取得されなかった場合関数を抜ける
+  todoTxtAry.forEach((txt) => console.log(txt));
+});
 
 //増やすボタンクリック
 AddListBtn.addEventListener("click", () => {
@@ -32,6 +44,7 @@ function createTxtBox() {
   //テキストボックスを生成
   var newTxtBox = document.createElement("input");
   newTxtBox.type = "text";
+  newTxtBox.className = "todoBox";
   newTxtBox.maxLength = 15;
   //リストを生成
   var newli = document.createElement("li");
