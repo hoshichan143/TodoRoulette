@@ -8,6 +8,18 @@
   </head>
   <body>
     <div id="container">
+      <!-- SVGは「回す」ボタンを押すまで非表示 -->
+      <svg
+        width="90%"
+        height="90%"
+        viewbox="0 0 100 100"
+        visibility="hidden"
+        opacity="0"
+        id="svgRouletteBase"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="50" cy="50" r="40" fill="blue" id="svgRouletteCircle" />
+      </svg>
       <p>今日は何する～？</p>
       <div id="divTodoList">
         <ul id="ulTodoList"></ul>

@@ -5,6 +5,14 @@
   flex-direction: column; /*要素を縦並べにする*/
   justify-content: center; /*左右中央寄せ*/
   align-items: center; /*上下中央寄せ*/
+  position: relative; /* 重ね合わせの基準にする */
+}
+
+#svgRouletteBase {
+  position: absolute; /*上に重ね合わせる*/
+  transition:
+    opacity 3s,
+    visibility 3s;
 }
 
 #ulTodoList {
