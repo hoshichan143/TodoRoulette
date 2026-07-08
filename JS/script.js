@@ -1,5 +1,6 @@
 //SVG要素の取得
 const SVGRouletteBase = document.getElementById("svgRouletteBase");
+const SVGRouletteBoard = document.getElementById("svgRouletteBoard");
 const SVGRouletteCircle = document.getElementById("svgRouletteCircle");
 //ulリスト要素の取得
 const UlTodoList = document.getElementById("ulTodoList");
@@ -43,14 +44,17 @@ RouletteBtn.addEventListener("click", () => {
   var colorCodes = [];
   makeColorPallete(colorCodes, todoTxtAry.length);
   //扇形を項目数分生成する
+  var board = SVGRouletteBoard;
   for (let i = 0; i < todoTxtAry.length; i++) {
-    createRouletteSector(sectDeg, i, base, colorCodes); //領域生成
-    createText(base, sectDeg, i, todoTxtAry[i]); //Todoの項目を載せる
+    createRouletteSector(sectDeg, i, board, colorCodes); //領域生成
+    createText(board, sectDeg, i, todoTxtAry[i]); //Todoの項目を載せる
   }
+  //gタグでまとめた要素ごと回転アニメを行わせる
+  SpinWheel(board);
 });
 
 //ルーレットの扇形領域を生成する
-function createRouletteSector(deg, count, base, palette) {
+function createRouletteSector(deg, count, board, palette) {
   var newSect = document.createElementNS("http://www.w3.org/2000/svg", "path");
   //盤の中心座標や半径といった情報を取得
   var circle = SVGRouletteCircle;
@@ -58,22 +62,24 @@ function createRouletteSector(deg, count, base, palette) {
   var cy = Number(circle.getAttribute("cy"));
   var r = Number(circle.getAttribute("r"));
   //角度計算に必要な値を算出
-  var startDeg = deg * count;
-  var endDeg = deg * (count + 1);
-  var startRad = degToRad(90 - startDeg);
-  var endRad = degToRad(90 - endDeg);
+  var startDeg = -90 + deg * count; //12時方向から描画開始させるように-90する
+  var endDeg = -90 + deg * (count + 1);
+  var startRad = degToRad(startDeg);
+  var endRad = degToRad(endDeg);
+  console.log(`${startDeg}${endDeg}`);
   //三角関数で始点と終点の座標を求める
   var sx = cx + r * Math.cos(startRad);
   var sy = cy + r * Math.sin(startRad);
   var ex = cx + r * Math.cos(endRad);
   var ey = cy + r * Math.sin(endRad);
   //pathのd属性を設定する
-  var pathStr = `M ${cx} ${cy} L ${sx} ${sy} A ${r} ${r} 0 0 0 ${ex} ${ey} Z`;
+  var largeArcFlag = deg > 180 ? 1 : 0;
+  var pathStr = `M ${cx} ${cy} L ${sx} ${sy} A ${r} ${r} 0 ${largeArcFlag} 1 ${ex} ${ey} Z`; //時計周りに描画
   newSect.setAttribute("d", pathStr);
   //扇型領域の色を決定する
   sectColor(newSect, palette, count);
   //扇型領域を盤の上に追加する
-  base.appendChild(newSect);
+  board.appendChild(newSect);
 }
 
 //度をラジアンへと変換する（主に三角関数の引数用）
@@ -115,12 +121,7 @@ function makeColorPallete(emptyColorCodeAry, todoLength) {
   }
 }
 
-function createText(base, deg, count, todoStr) {
-  var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  //取得したTodoを値に設定
-  var todoTxt = document.createTextNode(todoStr);
-  console.log(todoTxt);
-  newText.appendChild(todoTxt);
+function createText(board, deg, count, todoStr) {
   //座標設定
   //
   //盤の中心座標や半径といった情報を取得
@@ -130,26 +131,51 @@ function createText(base, deg, count, todoStr) {
   var r = Number(circle.getAttribute("r"));
   //角度計算に必要な値を算出
   var r = r * 0.95; //文字の開始地点が円周より内側になるようにする
-  var startDeg = deg * (count + 0.5); //各領域の円弧の中点から文字が始まるようにする
-  var startRad = degToRad(90 - startDeg);
+  var startDeg = -90 + deg * (count + 0.5); //各領域の円弧の中点から文字が始まるようにする
+  var startRad = degToRad(startDeg);
   //三角関数で始点の座標を求める
   var sx = cx + r * Math.cos(startRad);
   var sy = cy + r * Math.sin(startRad);
 
-  newText.setAttribute("x", sx);
-  newText.setAttribute("y", sy);
-  newText.setAttribute("font-size", "50%");
+  //円周から中心に向かって伸びるpathを作成
+  var newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  var pathId = `textPath${count}`;
+  newPath.setAttribute("id", pathId); //パスにIDをセットする
+  newPath.setAttribute("d", `M ${sx} ${sy} L ${cx} ${cy}`); // M(スタート) から L(ゴール：中心) への直線
+  board.appendChild(newPath); // 盤に追加
+  //text要素と、パスに沿わせるための textPath要素を作る
+  var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  var newTextPath = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "textPath",
+  );
+  // テキスト内容をtextPathに入れる
+  newTextPath.textContent = todoStr;
+  // PathのIDを紐付ける
+  newTextPath.setAttribute("href", `#${pathId}`);
+  newText.setAttribute("font-size", "40%");
   //縦書き指定にする
   newText.setAttribute("writing-mode", "vertical-rl");
-  console.log(`${deg},${startDeg}`);
-  //文章が円の中心に向かうように回転させる
-  newText.setAttribute(
-    "transform",
-    `rotate(${(Math.atan2(sy - cy, sx - cx) * 180) / Math.PI} ${sx} ${sy})`, //???ここぜんぜんわからん
-  );
+  // textの中にtextPathを入れ、それを盤に追加する
+  newText.appendChild(newTextPath);
+  board.appendChild(newText);
+}
 
-  //扇形領域に載せる
-  base.appendChild(newText);
+//ルーレットを回転させる
+function SpinWheel(board) {
+  board.animate(
+    // 途中の状態を表す配列
+    [
+      { transform: "rotate(0deg)" }, // 開始時の状態（0度）
+      { transform: "rotate(360deg)" }, // 終了時の状態（360度）
+    ],
+    // タイミングに関する設定
+    {
+      fill: "backwards", // 再生前後の状態（再生前、開始時の状態を適用）
+      duration: 1000, // 再生時間（1000ミリ秒）
+      iterations: Infinity, // アニメーションの繰り返し回数（ずっと繰り返す）
+    },
+  );
 }
 
 //増やすボタンクリック
