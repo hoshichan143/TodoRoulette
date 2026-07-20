@@ -2,12 +2,19 @@
 const SVGRouletteBase = document.getElementById("svgRouletteBase");
 const SVGRouletteBoard = document.getElementById("svgRouletteBoard");
 const SVGRouletteCircle = document.getElementById("svgRouletteCircle");
+//暗転用空要素の取得
+const BlackoutCover = document.getElementById("blackoutCover");
 //ulリスト要素の取得
 const UlTodoList = document.getElementById("ulTodoList");
 //回すボタンの取得
 const RouletteBtn = document.getElementById("rouletteBtn");
 //増やすボタンの取得
 const AddListBtn = document.getElementById("addListBtn");
+//止めるボタンの取得
+const StopBtn = document.getElementById("stopBtn");
+
+//隠し要素を配列にまとめておく
+const hiddenElements = [SVGRouletteBase, StopBtn, BlackoutCover];
 
 //DOM読み込み後に実行
 document.addEventListener("DOMContentLoaded", function () {
@@ -35,9 +42,10 @@ RouletteBtn.addEventListener("click", () => {
 
   //配列に格納した値をもとにルーレット盤を生成する
   //
-  var base = SVGRouletteBase;
-  base.style.visibility = "visible";
-  base.style.opacity = 1;
+  //元の画面を暗転させ、隠し要素を表示させる
+  hiddenElements.forEach((element) => {
+    showElement(element);
+  });
   //配列の長さを取得して、円盤を何分割するか、そしてその際の角度を算出する
   var sectDeg = Number(360 / todoTxtAry.length);
   //配色用パレットを作成する
@@ -52,6 +60,12 @@ RouletteBtn.addEventListener("click", () => {
   //gタグでまとめた要素ごと回転アニメを行わせる
   SpinWheel(board);
 });
+
+//隠し要素を表示させる
+function showElement(element) {
+  element.style.visibility = "visible";
+  element.style.opacity = 1;
+}
 
 //ルーレットの扇形領域を生成する
 function createRouletteSector(deg, count, board, palette) {
@@ -130,52 +144,70 @@ function createText(board, deg, count, todoStr) {
   var cy = Number(circle.getAttribute("cy"));
   var r = Number(circle.getAttribute("r"));
   //角度計算に必要な値を算出
-  var r = r * 0.95; //文字の開始地点が円周より内側になるようにする
+  r = r * 0.95; //文字の開始地点が円周より内側になるようにする
   var startDeg = -90 + deg * (count + 0.5); //各領域の円弧の中点から文字が始まるようにする
   var startRad = degToRad(startDeg);
   //三角関数で始点の座標を求める
   var sx = cx + r * Math.cos(startRad);
   var sy = cy + r * Math.sin(startRad);
 
-  //円周から中心に向かって伸びるpathを作成
-  var newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  var pathId = `textPath${count}`;
-  newPath.setAttribute("id", pathId); //パスにIDをセットする
-  newPath.setAttribute("d", `M ${sx} ${sy} L ${cx} ${cy}`); // M(スタート) から L(ゴール：中心) への直線
-  board.appendChild(newPath); // 盤に追加
-  //text要素と、パスに沿わせるための textPath要素を作る
-  var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  var newTextPath = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "textPath",
-  );
-  // テキスト内容をtextPathに入れる
-  newTextPath.textContent = todoStr;
-  // PathのIDを紐付ける
-  newTextPath.setAttribute("href", `#${pathId}`);
-  newText.setAttribute("font-size", "40%");
-  //縦書き指定にする
-  newText.setAttribute("writing-mode", "vertical-rl");
-  // textの中にtextPathを入れ、それを盤に追加する
-  newText.appendChild(newTextPath);
-  board.appendChild(newText);
+  // 文字列を5文字ごとに分割し、縦列を生成する
+  var chunkSize = 5;
+  var chunks = [];
+  for (var i = 0; i < todoStr.length; i += chunkSize) {
+    chunks.push(todoStr.slice(i, i + chunkSize));
+  }
+
+  // 文字列を中心線に対して左右に並べるためのオフセット
+  var dx = cx - sx;
+  var dy = cy - sy;
+  var distance = Math.sqrt(dx * dx + dy * dy);
+  var nx = dx / distance;
+  var ny = dy / distance;
+  var perpX = -ny;
+  var perpY = nx;
+  var columnSpacing = 4;
+
+  chunks.forEach(function (chunk, index) {
+    var offset = (index - (chunks.length - 1) / 2) * columnSpacing;
+    var offsetX = perpX * offset;
+    var offsetY = perpY * offset;
+    var pathId = `textPath${count}-${index}`;
+
+    var newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    newPath.setAttribute("id", pathId);
+    newPath.setAttribute(
+      "d",
+      `M ${sx + offsetX} ${sy + offsetY} L ${cx + offsetX} ${cy + offsetY}`,
+    );
+    board.appendChild(newPath);
+
+    var newTextPath = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "textPath",
+    );
+    newTextPath.textContent = chunk;
+    newTextPath.setAttribute("href", `#${pathId}`);
+
+    var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    newText.setAttribute("font-size", "40%");
+    newText.setAttribute("writing-mode", "vertical-rl");
+    newText.appendChild(newTextPath);
+    board.appendChild(newText);
+  });
 }
 
 //ルーレットを回転させる
+let rouletteAnimation = null;
 function SpinWheel(board) {
-  board.animate(
-    // 途中の状態を表す配列
-    [
-      { transform: "rotate(0deg)" }, // 開始時の状態（0度）
-      { transform: "rotate(360deg)" }, // 終了時の状態（360度）
-    ],
-    // タイミングに関する設定
-    {
-      fill: "backwards", // 再生前後の状態（再生前、開始時の状態を適用）
-      duration: 1000, // 再生時間（1000ミリ秒）
-      iterations: Infinity, // アニメーションの繰り返し回数（ずっと繰り返す）
-    },
-  );
+  if (rouletteAnimation) rouletteAnimation.kill();
+  rouletteAnimation = gsap.to(board, {
+    rotation: 360,
+    duration: 0.5, //0.5秒かけて一回転する
+    repeat: -1, //無限ループ
+    transformOrigin: "50% 50%", //中心を軸に回転
+    ease: "none", //等速回転
+  });
 }
 
 //増やすボタンクリック
@@ -204,3 +236,19 @@ function createTxtBox() {
   //ulリスト内に追加
   UlTodoList.appendChild(newli);
 }
+
+//止めるボタンクリック
+StopBtn.addEventListener("click", () => {
+  console.log("止めるボタンが押されました");
+  //ルーレットの回転アニメを取得できなければ抜ける
+  if (!rouletteAnimation) return;
+  //数回転分待った後、減速しながらルーレットを止める
+  //
+  gsap.to(rouletteAnimation, {
+    timeScale: 0.001, // 最終速度（ほぼ停止）
+    duration: 4.5, // 減速にかける秒数
+    ease: "power2.out", // イージング
+    delay: 0.5, // 0.5秒待ってから減速開始←これいる？
+    onComplete: () => rouletteAnimation.pause(),
+  });
+});

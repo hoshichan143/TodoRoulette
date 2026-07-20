@@ -16,26 +16,27 @@
         visibility="hidden"
         opacity="0"
         id="svgRouletteBase"
+        class="fadein-out"
         xmlns="http://www.w3.org/2000/svg"
       >
-        <g
-          id="svgRouletteBoard"
-          xmlns="http://w3.org"
-          transform-origin="50% 50%"
-        >
+        <g id="svgRouletteBoard" xmlns="http://w3.org">
           <circle cx="50" cy="50" r="40" fill="blue" id="svgRouletteCircle" />
         </g>
       </svg>
+      <div id="blackoutCover" class="fadein-out"></div>
+      <!--暗転用空要素 -->
       <p>今日は何する～？</p>
       <div id="divTodoList">
         <ul id="ulTodoList"></ul>
       </div>
       <div id="buttons">
+        <input type="button" value="止める！" id="stopBtn" class="fadein-out" />
         <input type="button" value="回す！" id="rouletteBtn" />
         <input type="button" value="増やす" id="addListBtn" />
       </div>
     </div>
     <script src="./JS/script.js"></script>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   </body>
 </html>
