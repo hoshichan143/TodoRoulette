@@ -19,9 +19,39 @@
         class="fadein-out"
         xmlns="http://www.w3.org/2000/svg"
       >
+        <!-- ドロップシャドウを定義 -->
+        <defs>
+          <!-- 影が途切れるのでwとhを既定より拡大　乗算で合成する -->
+          <filter id="shadow" x="-20%" y="-10%" width="200%" height="200%">
+            <feDropShadow
+              dx="0"
+              dy="0"
+              stdDeviation="1"
+              flood-opacity="0.8"
+              flood-color="SteelBlue"
+              result="dropShadow"
+            />
+            <!--<feBlend in="SourceGraphic" in2="dropShadow" mode="screen" />-->
+          </filter>
+        </defs>
         <g id="svgRouletteBoard" xmlns="http://w3.org">
-          <circle cx="50" cy="50" r="40" fill="blue" id="svgRouletteCircle" />
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            fill="blue"
+            id="svgRouletteCircle"
+            filter="url(#shadow)"
+          />
         </g>
+        <polygon
+          points="47,7.5 53,7.5 50,12.7"
+          fill="red"
+          stroke="white"
+          stroke-width="0.7"
+          id="svgRouletteTri"
+          filter="url(#shadow)"
+        />
       </svg>
       <div id="blackoutCover" class="fadein-out"></div>
       <!--暗転用空要素 -->

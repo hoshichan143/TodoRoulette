@@ -1,5 +1,6 @@
 //SVG要素の取得
 const SVGRouletteBase = document.getElementById("svgRouletteBase");
+const SVGRouletteTri = document.getElementById("svgRouletteTri");
 const SVGRouletteBoard = document.getElementById("svgRouletteBoard");
 const SVGRouletteCircle = document.getElementById("svgRouletteCircle");
 //暗転用空要素の取得
@@ -26,7 +27,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 //回すボタンクリック
 RouletteBtn.addEventListener("click", () => {
-  console.log("回すボタンが押されました");
   //テキストボックス内の「Todo」を配列内へ格納し、回収する
   //
   var todoTxtAry = []; //テキストボックス値格納用の配列
@@ -54,8 +54,12 @@ RouletteBtn.addEventListener("click", () => {
   //扇形を項目数分生成する
   var board = SVGRouletteBoard;
   for (let i = 0; i < todoTxtAry.length; i++) {
-    createRouletteSector(sectDeg, i, board, colorCodes); //領域生成
-    createText(board, sectDeg, i, todoTxtAry[i]); //Todoの項目を載せる
+    var group = document.createElementNS("http://www.w3.org/2000/svg", "g"); //領域をまとめるgタグを生成する
+    group.setAttribute("id", `group${i}`); //gタグにIDを付与する
+    board.appendChild(group); //タグ追加
+
+    createRouletteSector(sectDeg, i, group, colorCodes); //領域生成
+    createText(group, sectDeg, i, todoTxtAry[i]); //Todoの項目を載せる
   }
   //gタグでまとめた要素ごと回転アニメを行わせる
   SpinWheel(board);
@@ -68,8 +72,9 @@ function showElement(element) {
 }
 
 //ルーレットの扇形領域を生成する
-function createRouletteSector(deg, count, board, palette) {
+function createRouletteSector(deg, count, group, palette) {
   var newSect = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
   //盤の中心座標や半径といった情報を取得
   var circle = SVGRouletteCircle;
   var cx = Number(circle.getAttribute("cx"));
@@ -86,14 +91,24 @@ function createRouletteSector(deg, count, board, palette) {
   var sy = cy + r * Math.sin(startRad);
   var ex = cx + r * Math.cos(endRad);
   var ey = cy + r * Math.sin(endRad);
+
   //pathのd属性を設定する
   var largeArcFlag = deg > 180 ? 1 : 0;
   var pathStr = `M ${cx} ${cy} L ${sx} ${sy} A ${r} ${r} 0 ${largeArcFlag} 1 ${ex} ${ey} Z`; //時計周りに描画
   newSect.setAttribute("d", pathStr);
+
+  //path要素のIDとクラスを設定する
+  var pathId = `Path${count}`;
+  newSect.setAttribute("id", pathId);
+  newSect.setAttribute("class", "sector");
+
   //扇型領域の色を決定する
+  newSect.setAttribute("stroke", "white");
+  newSect.setAttribute("stroke-width", "1.5");
   sectColor(newSect, palette, count);
-  //扇型領域を盤の上に追加する
-  board.appendChild(newSect);
+
+  //扇型領域を領域グループタグに追加する
+  group.appendChild(newSect);
 }
 
 //度をラジアンへと変換する（主に三角関数の引数用）
@@ -135,7 +150,7 @@ function makeColorPallete(emptyColorCodeAry, todoLength) {
   }
 }
 
-function createText(board, deg, count, todoStr) {
+function createText(group, deg, count, todoStr) {
   //座標設定
   //
   //盤の中心座標や半径といった情報を取得
@@ -144,57 +159,45 @@ function createText(board, deg, count, todoStr) {
   var cy = Number(circle.getAttribute("cy"));
   var r = Number(circle.getAttribute("r"));
   //角度計算に必要な値を算出
-  r = r * 0.95; //文字の開始地点が円周より内側になるようにする
+  r = r * 0.93; //文字の開始地点が円周より内側になるようにする
   var startDeg = -90 + deg * (count + 0.5); //各領域の円弧の中点から文字が始まるようにする
   var startRad = degToRad(startDeg);
   //三角関数で始点の座標を求める
   var sx = cx + r * Math.cos(startRad);
   var sy = cy + r * Math.sin(startRad);
 
-  // 文字列を5文字ごとに分割し、縦列を生成する
-  var chunkSize = 5;
-  var chunks = [];
-  for (var i = 0; i < todoStr.length; i += chunkSize) {
-    chunks.push(todoStr.slice(i, i + chunkSize));
-  }
+  //path要素とtextPath要素を紐づけるIDを生成する
+  var pathId = `textPath${count}`;
 
-  // 文字列を中心線に対して左右に並べるためのオフセット
-  var dx = cx - sx;
-  var dy = cy - sy;
-  var distance = Math.sqrt(dx * dx + dy * dy);
-  var nx = dx / distance;
-  var ny = dy / distance;
-  var perpX = -ny;
-  var perpY = nx;
-  var columnSpacing = 4;
+  //path要素を作成する
+  var newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  //パスにIDをセットする
+  newPath.setAttribute("id", pathId);
+  // 円周上の点から中心への直線としてパスを設定する
+  newPath.setAttribute("d", `M ${sx} ${sy} L ${cx} ${cy}`);
+  // 盤に追加する
+  group.appendChild(newPath);
 
-  chunks.forEach(function (chunk, index) {
-    var offset = (index - (chunks.length - 1) / 2) * columnSpacing;
-    var offsetX = perpX * offset;
-    var offsetY = perpY * offset;
-    var pathId = `textPath${count}-${index}`;
+  //パスに沿わせるための textPath要素を作る
+  var newTextPath = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "textPath",
+  );
+  // テキスト内容をtextPath要素に入れる
+  newTextPath.textContent = todoStr;
+  //Path要素のIDを紐付ける
+  newTextPath.setAttribute("href", `#${pathId}`);
 
-    var newPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    newPath.setAttribute("id", pathId);
-    newPath.setAttribute(
-      "d",
-      `M ${sx + offsetX} ${sy + offsetY} L ${cx + offsetX} ${cy + offsetY}`,
-    );
-    board.appendChild(newPath);
+  //text要素を生成する
+  var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  //フォントサイズ設定
+  newText.setAttribute("font-size", "30%");
+  //縦書き指定にする
+  newText.setAttribute("writing-mode", "vertical-rl");
 
-    var newTextPath = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "textPath",
-    );
-    newTextPath.textContent = chunk;
-    newTextPath.setAttribute("href", `#${pathId}`);
-
-    var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    newText.setAttribute("font-size", "40%");
-    newText.setAttribute("writing-mode", "vertical-rl");
-    newText.appendChild(newTextPath);
-    board.appendChild(newText);
-  });
+  //text要素の中にtextPath要素を追加し、盤に追加する
+  newText.appendChild(newTextPath);
+  group.appendChild(newText);
 }
 
 //ルーレットを回転させる
@@ -239,7 +242,6 @@ function createTxtBox() {
 
 //止めるボタンクリック
 StopBtn.addEventListener("click", () => {
-  console.log("止めるボタンが押されました");
   //ルーレットの回転アニメを取得できなければ抜ける
   if (!rouletteAnimation) return;
   //数回転分待った後、減速しながらルーレットを止める
@@ -249,6 +251,42 @@ StopBtn.addEventListener("click", () => {
     duration: 4.5, // 減速にかける秒数
     ease: "power2.out", // イージング
     delay: 0.5, // 0.5秒待ってから減速開始←これいる？
-    onComplete: () => rouletteAnimation.pause(),
+    onComplete: () => {
+      rouletteAnimation.pause();
+      //三角形の先が示す領域を取得する
+      var sect = getSector();
+      var todoStr = getTodoFromSector(sect);
+      console.log(todoStr);
+    },
   });
 });
+
+//三角形の先が示す領域を取得する
+//
+function getSector() {
+  var tri = SVGRouletteTri;
+  var triPoints = tri.getBoundingClientRect();
+  var x = triPoints.left + triPoints.width / 2;
+  var y = triPoints.bottom;
+  //textpathなどsector以外を取得してしまう場合があるため、要素群からクラスで絞り込む
+  var elements = document.elementsFromPoint(x, y + 4);
+  console.log(elements);
+  var sect = elements
+    .find((element) => element.classList.contains("sector"))
+    .closest("g");
+  return sect;
+}
+
+//扇形領域から値を取得する
+//
+function getTodoFromSector(sect) {
+  var textPathList = sect.querySelectorAll("textPath");
+  console.log(textPathList);
+  if (textPathList.length == 0) return null;
+  //textPath要素の中身をひと繋ぎにする
+  var textPath = Array.from(textPathList) //nodelistを配列に変換
+    .map((tp) => tp.innerHTML) //出来上がったオブジェクト配列の中身を取り出す
+    .join(""); //連結する
+  var todoStr = textPath;
+  return todoStr;
+}
