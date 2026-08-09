@@ -5,6 +5,18 @@ const SVGRouletteBoard = document.getElementById("svgRouletteBoard");
 const SVGRouletteCircle = document.getElementById("svgRouletteCircle");
 //暗転用空要素の取得
 const BlackoutCover = document.getElementById("blackoutCover");
+
+const HiddenPage = document.getElementById("hiddenPage"); //div要素
+
+//結果表示用要素の取得
+const ResultTexts = document.getElementById("resultTexts"); //div要素
+const ResultText1 = document.getElementById("resultText1");
+const ResultText2 = document.getElementById("resultText2");
+const ResultText3 = document.getElementById("resultText3");
+const HiddenBtnResult = document.getElementById("hiddenBtnResult"); //div要素
+const AgainBtn = document.getElementById("againBtn");
+const ReturnBtn = document.getElementById("returnBtn");
+
 //ulリスト要素の取得
 const UlTodoList = document.getElementById("ulTodoList");
 //回すボタンの取得
@@ -12,10 +24,19 @@ const RouletteBtn = document.getElementById("rouletteBtn");
 //増やすボタンの取得
 const AddListBtn = document.getElementById("addListBtn");
 //止めるボタンの取得
+const HiddenBtnStp = document.getElementById("hiddenBtnStp"); //div要素
 const StopBtn = document.getElementById("stopBtn");
 
 //隠し要素を配列にまとめておく
-const hiddenElements = [SVGRouletteBase, StopBtn, BlackoutCover];
+const hiddenElements = [HiddenPage, SVGRouletteBase, StopBtn, BlackoutCover];
+const hiddenElements2 = [
+  ResultTexts,
+  ResultText1,
+  ResultText2,
+  ResultText3,
+  AgainBtn,
+  ReturnBtn,
+];
 
 //DOM読み込み後に実行
 document.addEventListener("DOMContentLoaded", function () {
@@ -64,12 +85,6 @@ RouletteBtn.addEventListener("click", () => {
   //gタグでまとめた要素ごと回転アニメを行わせる
   SpinWheel(board);
 });
-
-//隠し要素を表示させる
-function showElement(element) {
-  element.style.visibility = "visible";
-  element.style.opacity = 1;
-}
 
 //ルーレットの扇形領域を生成する
 function createRouletteSector(deg, count, group, palette) {
@@ -183,6 +198,7 @@ function createText(group, deg, count, todoStr) {
     "http://www.w3.org/2000/svg",
     "textPath",
   );
+
   // テキスト内容をtextPath要素に入れる
   newTextPath.textContent = todoStr;
   //Path要素のIDを紐付ける
@@ -192,6 +208,10 @@ function createText(group, deg, count, todoStr) {
   var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
   //フォントサイズ設定
   newText.setAttribute("font-size", "30%");
+  //文字数が多くて扇形に入りきらない場合、文字サイズを小さくする(未完)
+  if (newText.scrollHeight > newText.getBBox().height) {
+    newTextPath.setAttribute("font-size", "20%");
+  }
   //縦書き指定にする
   newText.setAttribute("writing-mode", "vertical-rl");
 
@@ -244,6 +264,13 @@ function createTxtBox() {
 StopBtn.addEventListener("click", () => {
   //ルーレットの回転アニメを取得できなければ抜ける
   if (!rouletteAnimation) return;
+  //止めるボタンを隠す
+  hideElement(StopBtn);
+  //止めるボタンのフェードアウトが完了したらdisplay:noneにする
+  StopBtn.addEventListener("transitionend", function handler() {
+    displayNoneElement(HiddenBtnStp); //止めるボタンの親divを非表示にする
+    StopBtn.removeEventListener("transitionend", handler); //イベントリスナーを削除する
+  });
   //数回転分待った後、減速しながらルーレットを止める
   //
   gsap.to(rouletteAnimation, {
@@ -257,6 +284,19 @@ StopBtn.addEventListener("click", () => {
       var sect = getSector();
       var todoStr = getTodoFromSector(sect);
       console.log(todoStr);
+      //結果をテキストに設定
+      ResultText1.textContent = "それならまずは…";
+      ResultText2.textContent = todoStr;
+      ResultText3.textContent = "からやってみよう！！";
+      //結果表示用の要素を表示させる
+      displayFlexElement(ResultTexts); //div要素をdisplay:flexにする
+      displayFlexElement(HiddenBtnResult); //同上
+      //1フレーム後にフェードインさせる（通常ブラウザはCSSをまとめて処理するが、上の処理が終わった「後に」アニメを実行させる！！！）
+      requestAnimationFrame(() => {
+        hiddenElements2.forEach((element) => {
+          showElement(element);
+        });
+      });
     },
   });
 });
@@ -281,7 +321,6 @@ function getSector() {
 //
 function getTodoFromSector(sect) {
   var textPathList = sect.querySelectorAll("textPath");
-  console.log(textPathList);
   if (textPathList.length == 0) return null;
   //textPath要素の中身をひと繋ぎにする
   var textPath = Array.from(textPathList) //nodelistを配列に変換
@@ -289,4 +328,82 @@ function getTodoFromSector(sect) {
     .join(""); //連結する
   var todoStr = textPath;
   return todoStr;
+}
+
+//戻るボタンをクリック
+ReturnBtn.addEventListener("click", () => {
+  //ルーレット画面全体をフェードアウトで非表示にする
+  hideElement(SVGRouletteBase);
+  hideElement(HiddenPage);
+  hideElement(BlackoutCover);
+  //フェードアウトが完了してからルーレットの初期化を行う
+  BlackoutCover.addEventListener("transitionend", function handler() {
+    resetRoulette();
+    BlackoutCover.removeEventListener("transitionend", handler); //イベントリスナーを削除する
+  });
+});
+
+//もう一度回すボタンをクリック
+AgainBtn.addEventListener("click", () => {
+  //初期化中に「仕切り直し！」などの画面を上に表示させる（未実装）
+  resetRoulette(); //ルーレットの初期化を行う
+  //少し間を置き、初期化が完了してから下記処理へ
+  RouletteBtn.click(); //回すボタンを自動で押す
+});
+
+//次の回転用に諸要素の初期化を行う
+function resetRoulette() {
+  //visible・display属性を初期化する
+  displayFlexElement(HiddenBtnStp);
+  displayNoneElement(ResultTexts);
+  hideElement(ResultTexts);
+  hideElement(ResultText1);
+  hideElement(ResultText2);
+  hideElement(ResultText3);
+  hideElement(AgainBtn);
+  hideElement(ReturnBtn);
+  //resultTextsの中身を初期化する
+  ResultText1.textContent = "";
+  ResultText2.textContent = "";
+  ResultText3.textContent = "";
+  //ルーレット盤の要素を削除する
+  //SVGRoulettBoard内にあるgroup0,group1...を削除する
+  var groups = SVGRouletteBoard.querySelectorAll("g");
+  groups.forEach((group) => {
+    if (group.id.startsWith("group")) group.remove();
+  });
+  //ルーレット盤の回転角を初期化する
+  gsap.set(SVGRouletteBoard, { rotation: 0 });
+}
+
+//隠し要素を表示させる
+function showElement(element) {
+  if (element.classList.contains("hidden")) {
+    element.classList.remove("hidden");
+  }
+  element.classList.add("visible");
+}
+
+//要素をdisplay:flexにする(フェードイン用)
+function displayFlexElement(element) {
+  if (element.classList.contains("display-none")) {
+    element.classList.remove("display-none");
+  }
+  element.classList.add("display-flex");
+}
+
+//表示させた要素を非表示にする(フェードアウト用)
+function hideElement(element) {
+  if (element.classList.contains("visible")) {
+    element.classList.remove("visible");
+  }
+  element.classList.add("hidden");
+}
+
+//表示させた要素を非表示にする(フェードアウト後にdisplay:noneにする用)
+function displayNoneElement(element) {
+  if (element.classList.contains("display-flex")) {
+    element.classList.remove("display-flex");
+  }
+  element.classList.add("display-none");
 }
