@@ -48,7 +48,8 @@
 
 .resultText {
   font-size: 170%;
-  margin: 10px auto;
+  margin: 10px;
+  text-align: center;
 }
 
 #resultText2 {
@@ -58,6 +59,10 @@
 #resultTexts {
   background: rgb(255, 255, 255);
   margin-bottom: 10px;
+}
+
+body {
+  background: rgb(79, 161, 255);
 }
 
 #container {

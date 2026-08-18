@@ -81,10 +81,23 @@ RouletteBtn.addEventListener("click", () => {
 
     createRouletteSector(sectDeg, i, group, colorCodes); //領域生成
     createText(group, sectDeg, i, todoTxtAry[i]); //Todoの項目を載せる
+    createOutline(group, i); //文字のはみだしを隠すために上から扇形領域の枠線を重ねる
   }
   //gタグでまとめた要素ごと回転アニメを行わせる
   SpinWheel(board);
 });
+
+//文字のはみだしを隠すために上から扇形領域の枠線を重ねる
+function createOutline(group, count) {
+  let outline = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  let sectPath = document.getElementById(`Path${count}`);
+  outline.setAttribute("d", sectPath.getAttribute("d"));
+  outline.setAttribute("stroke", "white");
+  outline.setAttribute("stroke-width", "1");
+  outline.setAttribute("fill", "none");
+  outline.setAttribute("id", `outline${count}`);
+  group.appendChild(outline);
+}
 
 //ルーレットの扇形領域を生成する
 function createRouletteSector(deg, count, group, palette) {
@@ -100,7 +113,6 @@ function createRouletteSector(deg, count, group, palette) {
   var endDeg = -90 + deg * (count + 1);
   var startRad = degToRad(startDeg);
   var endRad = degToRad(endDeg);
-  console.log(`${startDeg}${endDeg}`);
   //三角関数で始点と終点の座標を求める
   var sx = cx + r * Math.cos(startRad);
   var sy = cy + r * Math.sin(startRad);
@@ -118,8 +130,9 @@ function createRouletteSector(deg, count, group, palette) {
   newSect.setAttribute("class", "sector");
 
   //扇型領域の色を決定する
-  newSect.setAttribute("stroke", "white");
-  newSect.setAttribute("stroke-width", "1.5");
+  //newSect.setAttribute("stroke", "white");
+  //newSect.setAttribute("stroke-width", "1.5");
+  newSect.setAttribute("stroke", "none");
   sectColor(newSect, palette, count);
 
   //扇型領域を領域グループタグに追加する
@@ -206,18 +219,19 @@ function createText(group, deg, count, todoStr) {
 
   //text要素を生成する
   var newText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  //フォントサイズ設定
-  newText.setAttribute("font-size", "30%");
-  //文字数が多くて扇形に入りきらない場合、文字サイズを小さくする(未完)
-  if (newText.scrollHeight > newText.getBBox().height) {
-    newTextPath.setAttribute("font-size", "20%");
-  }
+
   //縦書き指定にする
   newText.setAttribute("writing-mode", "vertical-rl");
-
   //text要素の中にtextPath要素を追加し、盤に追加する
   newText.appendChild(newTextPath);
   group.appendChild(newText);
+  //フォントサイズ設定
+  newText.setAttribute("font-size", "6");
+  //文字数が多くて扇形に入りきらない場合、文字サイズを小さくする
+  while (newText.getComputedTextLength() > newPath.getTotalLength() - 5) {
+    var currentFontSize = parseFloat(newText.getAttribute("font-size")); //parseFloatで文字列を数値に変換する px等の情報を抜く
+    newText.setAttribute("font-size", currentFontSize - 0.1);
+  }
 }
 
 //ルーレットを回転させる
@@ -283,23 +297,33 @@ StopBtn.addEventListener("click", () => {
       //三角形の先が示す領域を取得する
       var sect = getSector();
       var todoStr = getTodoFromSector(sect);
-      console.log(todoStr);
       //結果をテキストに設定
-      ResultText1.textContent = "それならまずは…";
-      ResultText2.textContent = todoStr;
-      ResultText3.textContent = "からやってみよう！！";
+      setResultText(todoStr);
       //結果表示用の要素を表示させる
       displayFlexElement(ResultTexts); //div要素をdisplay:flexにする
       displayFlexElement(HiddenBtnResult); //同上
       //1フレーム後にフェードインさせる（通常ブラウザはCSSをまとめて処理するが、上の処理が終わった「後に」アニメを実行させる！！！）
       requestAnimationFrame(() => {
         hiddenElements2.forEach((element) => {
+          if (element.textContent === "") return; //todoStrが取得できなかった場合text要素を表示させない
           showElement(element);
         });
       });
     },
   });
 });
+
+function setResultText(todoStr) {
+  if (!todoStr) {
+    ResultText1.textContent = "あらら？決まらなかったみたい…";
+    ResultText2.textContent = "";
+    ResultText3.textContent = "もう一度まわす？";
+  } else {
+    ResultText1.textContent = "それならまずは…";
+    ResultText2.textContent = todoStr;
+    ResultText3.textContent = "からやってみよう！！";
+  }
+}
 
 //三角形の先が示す領域を取得する
 //
